@@ -12,7 +12,7 @@ import java.util.Scanner;
 public class NetworkUtils {
 
     private static final String BASE_URL = "http://api.themoviedb.org/3/movie/";
-    private static final String API_KEY = "d89d8544c746180e24453e6f99a145da";
+    private static final String API_KEY = "enter your api key";
 
     public static URL getUrl(String sortBy) {
         Uri uri = Uri.parse(BASE_URL + sortBy).buildUpon()
