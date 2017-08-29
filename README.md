@@ -1,5 +1,4 @@
 # TheMovieApp
-Udacity Nanodegree: Popular Movie, part 1
 
 
 Before runing the app please enter your tmdb api key in static variable API_KEY at 
