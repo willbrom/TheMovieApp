@@ -1,11 +1,19 @@
 <resources>
+
     <string name="app_name">The Movie App</string>
     <string name="error_message">Error loading data</string>
     <string name="action_settings">Settings</string>
-    <string name="spinner_sort_by_text">Sort by: </string>
     <string name="image_content_description">Movie poster</string>
-    <string-array name="spinner_sort_by_entries">
-        <item>popularity</item>
-        <item>top rated</item>
-    </string-array>
+
+
+    <string name="pref_sort_by_title">Sort by</string>
+    <string name="pref_sort_by_key">sort_by</string>
+    <string name="pref_sort_by_default" translatable="false">popular</string>
+    <string name="pref_sort_by_label_popular">Most popular</string>
+    <string name="pref_sort_by_label_top_rated">Top rated</string>
+    <string name="pref_sort_by_label_favorite">Favorite</string>
+    <string name="pref_sort_by_value_popular" translatable="false">popular</string>
+    <string name="pref_sort_by_value_top_rated" translatable="false">top_rated</string>
+    <string name="pref_sort_by_value_favorite" translatable="false">favorite</string>
+
 </resources>
