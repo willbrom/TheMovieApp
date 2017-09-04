@@ -2,7 +2,9 @@ package com.example.toshiba.themovieapp;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.os.AsyncTask;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.AsyncTaskLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.preference.PreferenceManager;
@@ -19,16 +21,17 @@ import android.widget.TextView;
 import com.example.toshiba.themovieapp.utilities.JsonUtils;
 import com.example.toshiba.themovieapp.utilities.NetworkUtils;
 
-import java.io.IOException;
 import java.net.URL;
 
 
 public class MainActivity extends AppCompatActivity implements MovieDbAdapter.ItemClickListener,
-        SharedPreferences.OnSharedPreferenceChangeListener{
+        SharedPreferences.OnSharedPreferenceChangeListener, LoaderManager.LoaderCallbacks<String[][]>{
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String SORT_BY_POPULAR = "popular";
     private static final String SORT_BY_TOP_RATED = "top_rated";
+    private static final String BUNDLE_URL_KEY = "key_url";
+    private static final int LOADER_NUM = 11;
     private static boolean PREFERENCE_HAS_BEEN_UPDATED = false;
     private String sortBy;
 
@@ -57,7 +60,7 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
         recyclerView.setAdapter(adapter);
 
         setupPreferences();
-        callMovieDbAsyncTask(sortBy);
+        callMovieLoader(sortBy);
         PreferenceManager.getDefaultSharedPreferences(this)
                 .registerOnSharedPreferenceChangeListener(this);
     }
@@ -67,7 +70,7 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
         super.onStart();
         Log.d(TAG, "OnStart got called");
         if (PREFERENCE_HAS_BEEN_UPDATED) {
-            callMovieDbAsyncTask(sortBy);
+            callMovieLoader(sortBy);
         }
     }
 
@@ -86,10 +89,19 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
         }
     }
 
-    private void callMovieDbAsyncTask(String sortBy) {
-        showRecyclerView();
-        URL url = NetworkUtils.getUrl(sortBy);
-        new MovieDbTask().execute(url);
+    private void callMovieLoader(String sortBy) {
+        String url = NetworkUtils.getUrl(sortBy).toString();
+        Log.d(TAG, url);
+        Bundle bundle = new Bundle();
+        bundle.putString(BUNDLE_URL_KEY, url);
+
+        LoaderManager loaderManager = getSupportLoaderManager();
+        Loader<String[][]> loader = loaderManager.getLoader(LOADER_NUM);
+
+        if (loader == null)
+            loaderManager.initLoader(LOADER_NUM, bundle, this);
+        else
+            loaderManager.restartLoader(LOADER_NUM, bundle, this);
     }
 
     private void showRecyclerView() {
@@ -100,24 +112,6 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
     private void showErrorMessage() {
         recyclerView.setVisibility(View.INVISIBLE);
         textViewErrorMessage.setVisibility(View.VISIBLE);
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        MenuInflater menuInflater = getMenuInflater();
-        menuInflater.inflate(R.menu.main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int itemId = item.getItemId();
-        if (itemId == R.id.action_setting) {
-            Intent intent = new Intent(MainActivity.this, SettingActivity.class);
-            startActivity(intent);
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -147,42 +141,86 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
     }
 
     @Override
+    public Loader<String[][]> onCreateLoader(int id, final Bundle args) {
+        return new AsyncTaskLoader<String[][]>(this) {
+
+            String[][] results;
+
+            @Override
+            protected void onStartLoading() {
+                if (args == null)
+                    return;
+                recyclerView.setVisibility(View.INVISIBLE);
+                progressBar.setVisibility(View.VISIBLE);
+
+                if (results != null) {
+                    deliverResult(results);
+                } else {
+                    forceLoad();
+                }
+            }
+
+            @Override
+            public String[][] loadInBackground() {
+                String getUrl = args.getString(BUNDLE_URL_KEY);
+
+                try {
+                    URL url = new URL(getUrl);
+                    String rawJson = NetworkUtils.getHttpResponse(url);
+                    return JsonUtils.parseRawJson(rawJson);
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+
+            @Override
+            public void deliverResult(String[][] data) {
+                results = data;
+                super.deliverResult(data);
+            }
+        };
+    }
+
+    @Override
+    public void onLoadFinished(Loader<String[][]> loader, String[][] data) {
+        progressBar.setVisibility(View.INVISIBLE);
+
+        if (data == null) {
+            showErrorMessage();
+        } else {
+            showRecyclerView();
+            adapter.setMovieData(data);
+        }
+    }
+
+    @Override
+    public void onLoaderReset(Loader<String[][]> loader) {
+
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater menuInflater = getMenuInflater();
+        menuInflater.inflate(R.menu.main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int itemId = item.getItemId();
+        if (itemId == R.id.action_setting) {
+            Intent intent = new Intent(MainActivity.this, SettingActivity.class);
+            startActivity(intent);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         PreferenceManager.getDefaultSharedPreferences(this)
                 .unregisterOnSharedPreferenceChangeListener(this);
     }
 
-    private class MovieDbTask extends AsyncTask<URL, Void, String[][]> {
-
-        @Override
-        protected void onPreExecute() {
-            super.onPreExecute();
-            progressBar.setVisibility(View.VISIBLE);
-        }
-
-        @Override
-        protected String[][] doInBackground(URL... urls) {
-            URL url = urls[0];
-
-            try {
-                String rawJson = NetworkUtils.getHttpResponse(url);
-                return JsonUtils.parseRawJson(rawJson);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        @Override
-        protected void onPostExecute(String[][] strings) {
-            progressBar.setVisibility(View.INVISIBLE);
-
-            if (strings != null) {
-                adapter.setMovieData(strings);
-            } else {
-                showErrorMessage();
-            }
-        }
-    }
 }
