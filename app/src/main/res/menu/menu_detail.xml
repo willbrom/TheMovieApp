@@ -3,9 +3,9 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/action_setting"
-        android:title="@string/action_settings"
-        android:orderInCategory="1"
-        app:showAsAction="never" />
+        android:id="@+id/action_add_fav"
+        app:showAsAction="always"
+        android:title="Add Fav"
+        android:orderInCategory="1"/>
 
 </menu>

@@ -2,6 +2,8 @@ package com.example.toshiba.themovieapp;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
@@ -18,6 +20,8 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.example.toshiba.themovieapp.data.MovieContract;
+import com.example.toshiba.themovieapp.data.MovieDbHelper;
 import com.example.toshiba.themovieapp.utilities.JsonUtils;
 import com.example.toshiba.themovieapp.utilities.NetworkUtils;
 
@@ -30,6 +34,7 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String SORT_BY_POPULAR = "popular";
     private static final String SORT_BY_TOP_RATED = "top_rated";
+    private static final String SORT_BY_FAVORITE = "favorite";
     private static final String BUNDLE_URL_KEY = "key_url";
     private static final int LOADER_NUM = 11;
     private static boolean PREFERENCE_HAS_BEEN_UPDATED = false;
@@ -71,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
         Log.d(TAG, "OnStart got called");
         if (PREFERENCE_HAS_BEEN_UPDATED) {
             callMovieLoader(sortBy);
+            PREFERENCE_HAS_BEEN_UPDATED = false;
         }
     }
 
@@ -86,12 +92,19 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
             case SORT_BY_TOP_RATED:
                 sortBy = SORT_BY_TOP_RATED;
                 break;
+            case SORT_BY_FAVORITE:
+                sortBy = SORT_BY_FAVORITE;
         }
     }
 
     private void callMovieLoader(String sortBy) {
-        String url = NetworkUtils.getUrl(sortBy).toString();
-        Log.d(TAG, url);
+        String url = "";
+        if (!sortBy.equals(SORT_BY_FAVORITE)) {
+            url = NetworkUtils.getUrl(sortBy).toString();
+        } else {
+            url = SORT_BY_FAVORITE;
+        }
+        Log.d(TAG, "callMovieLoader got called " + url);
         Bundle bundle = new Bundle();
         bundle.putString(BUNDLE_URL_KEY, url);
 
@@ -134,6 +147,8 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
                 case SORT_BY_TOP_RATED:
                     sortBy = SORT_BY_TOP_RATED;
                     break;
+                case SORT_BY_FAVORITE:
+                    sortBy = SORT_BY_FAVORITE;
             }
 
             PREFERENCE_HAS_BEEN_UPDATED = true;
@@ -148,33 +163,59 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
 
             @Override
             protected void onStartLoading() {
+                Log.d(TAG, "onStartLoading got called");
                 if (args == null)
                     return;
-                recyclerView.setVisibility(View.INVISIBLE);
-                progressBar.setVisibility(View.VISIBLE);
 
                 if (results != null) {
                     deliverResult(results);
                 } else {
+                    recyclerView.setVisibility(View.INVISIBLE);
+                    progressBar.setVisibility(View.VISIBLE);
                     forceLoad();
                 }
             }
 
             @Override
             public String[][] loadInBackground() {
+                Log.d(TAG, "loadInBackground got called");
                 String getUrl = args.getString(BUNDLE_URL_KEY);
+                Log.d(TAG, "getUrl is: " + getUrl);
+                String test = "";
 
-                try {
-                    URL url = new URL(getUrl);
-                    String rawJson = NetworkUtils.getHttpResponse(url);
-                    return JsonUtils.parseRawJson(rawJson);
-                } catch (Exception e) {
-                    return null;
+                if (!getUrl.equals(SORT_BY_FAVORITE)) {
+                    try {
+                        URL url = new URL(getUrl);
+                        String rawJson = NetworkUtils.getHttpResponse(url);
+                        return JsonUtils.parseRawJson(rawJson);
+                    } catch (Exception e) {
+                        return null;
+                    }
                 }
+
+                MovieDbHelper movieDbHelper = new MovieDbHelper(getContext());
+                Cursor cursor = movieDbHelper.getReadableDatabase().query(
+                        MovieContract.MovieData.TABLE_NAME,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null);
+                if (cursor.moveToFirst()) {
+                    test = cursor.getString(cursor.getColumnIndexOrThrow("title"));
+                    Log.d(TAG, test);
+                    while (cursor.moveToNext()) {
+                        test = cursor.getString(cursor.getColumnIndexOrThrow("title"));
+                        Log.d(TAG, test);
+                    }
+                }
+                return null;
             }
 
             @Override
             public void deliverResult(String[][] data) {
+                Log.d(TAG, "deliverResult got called");
                 results = data;
                 super.deliverResult(data);
             }
@@ -183,6 +224,7 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
 
     @Override
     public void onLoadFinished(Loader<String[][]> loader, String[][] data) {
+        Log.d(TAG, "onLoadFinished got called");
         progressBar.setVisibility(View.INVISIBLE);
 
         if (data == null) {
