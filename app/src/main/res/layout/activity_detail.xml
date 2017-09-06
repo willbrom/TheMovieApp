@@ -14,7 +14,7 @@
         <ImageView
             android:id="@+id/iv_poster"
             android:contentDescription="@string/image_content_description"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center_horizontal"/>
 

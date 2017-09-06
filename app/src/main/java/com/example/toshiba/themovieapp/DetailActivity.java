@@ -85,7 +85,7 @@ public class DetailActivity extends AppCompatActivity {
             Log.d(TAG, "Here is the uri: " + uri.toString());
 
             if (uri != null)
-                Toast.makeText(getBaseContext(), uri.toString(), Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "Added to favorite", Toast.LENGTH_SHORT).show();
 
             return true;
         }

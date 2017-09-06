@@ -11,7 +11,7 @@ import com.example.toshiba.themovieapp.data.MovieContract.MovieData;
 public class MovieDbHelper extends SQLiteOpenHelper{
 
     private static final String DATABASE_NAME = "movie.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 6;
 
     public MovieDbHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -22,11 +22,11 @@ public class MovieDbHelper extends SQLiteOpenHelper{
         final String SQL_CREATE_MOVIE_TABLE = "CREATE TABLE " + MovieData.TABLE_NAME + " (" +
                 MovieData._ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
                 MovieData.COLUMN_TITLE + " TEXT NOT NULL, " +
-                MovieData.COLUMN_POSTER + " BLOB NOT NULL, " +
+                MovieData.COLUMN_POSTER + " TEXT NOT NULL, " +
                 MovieData.COLUMN_OVERVIEW + " TEXT NOT NULL, " +
                 MovieData.COLUMN_RELEASE_DATE + " TEXT NOT NULL, " +
-                MovieData.COLUMN_RATING + " INTEGER NOT NULL" +
-                "); ";
+                MovieData.COLUMN_RATING + " TEXT NOT NULL, " +
+                "UNIQUE (" + MovieData.COLUMN_TITLE + ") ON CONFLICT REPLACE); ";
         sqLiteDatabase.execSQL(SQL_CREATE_MOVIE_TABLE);
     }
 

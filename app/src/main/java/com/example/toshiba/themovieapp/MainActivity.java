@@ -3,7 +3,6 @@ package com.example.toshiba.themovieapp;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
@@ -58,7 +57,7 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
         progressBar = (ProgressBar) findViewById(R.id.progress_bar);
         adapter = new MovieDbAdapter(this);
 
-        int spanCount = 3;
+        int spanCount = 2;
         GridLayoutManager layoutManager = new GridLayoutManager(this, spanCount, GridLayoutManager.VERTICAL, false);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setHasFixedSize(true);
@@ -98,7 +97,7 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
     }
 
     private void callMovieLoader(String sortBy) {
-        String url = "";
+        String url;
         if (!sortBy.equals(SORT_BY_FAVORITE)) {
             url = NetworkUtils.getUrl(sortBy).toString();
         } else {
@@ -181,7 +180,7 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
                 Log.d(TAG, "loadInBackground got called");
                 String getUrl = args.getString(BUNDLE_URL_KEY);
                 Log.d(TAG, "getUrl is: " + getUrl);
-                String test = "";
+                String returnedData[][];
 
                 if (!getUrl.equals(SORT_BY_FAVORITE)) {
                     try {
@@ -191,26 +190,30 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
                     } catch (Exception e) {
                         return null;
                     }
-                }
+                } else {
+                    MovieDbHelper movieDbHelper = new MovieDbHelper(getContext());
+                    Cursor cursor = movieDbHelper.getReadableDatabase().query(
+                            MovieContract.MovieData.TABLE_NAME,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null,
+                            null);
 
-                MovieDbHelper movieDbHelper = new MovieDbHelper(getContext());
-                Cursor cursor = movieDbHelper.getReadableDatabase().query(
-                        MovieContract.MovieData.TABLE_NAME,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        null);
-                if (cursor.moveToFirst()) {
-                    test = cursor.getString(cursor.getColumnIndexOrThrow("title"));
-                    Log.d(TAG, test);
-                    while (cursor.moveToNext()) {
-                        test = cursor.getString(cursor.getColumnIndexOrThrow("title"));
-                        Log.d(TAG, test);
+                    returnedData = new String[cursor.getCount()][5];
+
+                    for (int i = 0; i < returnedData.length; i++) {
+                        cursor.moveToNext();
+                        returnedData[i][0] = cursor.getString(cursor.getColumnIndex("title"));
+                        returnedData[i][1] = cursor.getString(cursor.getColumnIndex("poster"));
+                        returnedData[i][2] = cursor.getString(cursor.getColumnIndex("overview"));
+                        returnedData[i][3] = cursor.getString(cursor.getColumnIndex("releaseDate"));
+                        returnedData[i][4] = cursor.getString(cursor.getColumnIndex("rating"));
                     }
+
+                    return returnedData;
                 }
-                return null;
             }
 
             @Override
