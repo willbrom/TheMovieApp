@@ -10,10 +10,13 @@ import android.database.sqlite.SQLiteDatabase;
 import android.net.Uri;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 public class MovieProvider extends ContentProvider {
 
+    private static final String TAG = MovieProvider.class.getSimpleName();
     public static final int CODE_MOVIE = 100;
+    public static final int CODE_MOVIE_WITH_TITLE = 101;
     private MovieDbHelper movieDbHelper;
     private static final UriMatcher uriMatcher = buildUriMatcher();
 
@@ -21,6 +24,7 @@ public class MovieProvider extends ContentProvider {
         final UriMatcher matcher = new UriMatcher(UriMatcher.NO_MATCH);
         final String authority = MovieContract.CONTENT_AUTHORITY;
         matcher.addURI(authority, MovieContract.PATH_MOVIE, CODE_MOVIE);
+        matcher.addURI(authority, MovieContract.PATH_MOVIE + "/*", CODE_MOVIE_WITH_TITLE);
         return matcher;
     }
 
@@ -32,19 +36,32 @@ public class MovieProvider extends ContentProvider {
 
     @Nullable
     @Override
-    public Cursor query(@NonNull Uri uri, @Nullable String[] strings, @Nullable String s, @Nullable String[] strings1, @Nullable String s1) {
+    public Cursor query(@NonNull Uri uri, @Nullable String[] columns, @Nullable String selection,
+                        @Nullable String[] selectionArgs, @Nullable String orderBy) {
         Cursor cursor = null;
         switch (uriMatcher.match(uri)) {
             case CODE_MOVIE:
                 cursor = movieDbHelper.getReadableDatabase().query(
                         MovieContract.MovieData.TABLE_NAME,
-                        strings,
-                        s,
-                        strings1,
+                        columns,
+                        selection,
+                        selectionArgs,
                         null,
                         null,
-                        s1);
+                        orderBy);
                 break;
+            case CODE_MOVIE_WITH_TITLE:
+                Log.d(TAG, "Uri last path segment: " + uri.getLastPathSegment());
+                selectionArgs = new String[]{uri.getLastPathSegment()};
+                cursor = movieDbHelper.getReadableDatabase().query(
+                        MovieContract.MovieData.TABLE_NAME,
+                        columns,
+                        MovieContract.MovieData.COLUMN_TITLE + " = ? ",
+                        selectionArgs,
+                        null,
+                        null,
+                        orderBy);
+                Log.d(TAG, "Query CODE_MOVIE_WITH_TITLE cursor : " + cursor.getCount());
         }
         cursor.setNotificationUri(getContext().getContentResolver(), uri);
         return cursor;

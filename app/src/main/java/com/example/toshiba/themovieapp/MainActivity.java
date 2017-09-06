@@ -191,11 +191,8 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
                         return null;
                     }
                 } else {
-                    MovieDbHelper movieDbHelper = new MovieDbHelper(getContext());
-                    Cursor cursor = movieDbHelper.getReadableDatabase().query(
-                            MovieContract.MovieData.TABLE_NAME,
-                            null,
-                            null,
+                    Cursor cursor = getContentResolver().query(
+                            MovieContract.MovieData.CONTENT_URI,
                             null,
                             null,
                             null,

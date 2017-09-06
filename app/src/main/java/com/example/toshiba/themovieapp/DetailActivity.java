@@ -2,6 +2,7 @@ package com.example.toshiba.themovieapp;
 
 import android.content.ContentValues;
 import android.content.Intent;
+import android.database.Cursor;
 import android.net.Uri;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -59,13 +60,23 @@ public class DetailActivity extends AppCompatActivity {
         overViewTextView.setText(overView);
         releaseDataTextView.setText(releaseData);
         voteAverageTextView.setText(voteAverage);
-
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater menuInflater = getMenuInflater();
         menuInflater.inflate(R.menu.menu_detail, menu);
+        MenuItem addMenuItem = menu.findItem(R.id.action_add_fav);
+        MenuItem removeMenuItem = menu.findItem(R.id.action_remove_fav);
+
+        if (getCursor() > 0) {
+            addMenuItem.setVisible(false);
+            removeMenuItem.setVisible(true);
+        } else {
+            addMenuItem.setVisible(true);
+            removeMenuItem.setVisible(false);
+        }
+
         return true;
     }
 
@@ -89,7 +100,20 @@ public class DetailActivity extends AppCompatActivity {
 
             return true;
         }
+        else if (itemId == R.id.action_remove_fav) {
+            Toast.makeText(this, "Remove was clicked", Toast.LENGTH_SHORT).show();
+            return true;
+        }
+
         return super.onOptionsItemSelected(item);
+    }
+
+    private int getCursor() {
+        Uri uri = MovieContract.MovieData.CONTENT_URI.buildUpon().appendPath(title).build();
+        Log.d(TAG, "Uri here: " + uri.toString());
+        Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+        Log.d(TAG, "Cursor here: " + cursor.getCount());
+        return cursor.getCount();
     }
 
 }
