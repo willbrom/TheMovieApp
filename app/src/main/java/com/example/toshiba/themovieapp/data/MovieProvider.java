@@ -16,7 +16,7 @@ public class MovieProvider extends ContentProvider {
 
     private static final String TAG = MovieProvider.class.getSimpleName();
     public static final int CODE_MOVIE = 100;
-    public static final int CODE_MOVIE_WITH_TITLE = 101;
+    public static final int CODE_MOVIE_WITH_ID = 101;
     private MovieDbHelper movieDbHelper;
     private static final UriMatcher uriMatcher = buildUriMatcher();
 
@@ -24,7 +24,7 @@ public class MovieProvider extends ContentProvider {
         final UriMatcher matcher = new UriMatcher(UriMatcher.NO_MATCH);
         final String authority = MovieContract.CONTENT_AUTHORITY;
         matcher.addURI(authority, MovieContract.PATH_MOVIE, CODE_MOVIE);
-        matcher.addURI(authority, MovieContract.PATH_MOVIE + "/*", CODE_MOVIE_WITH_TITLE);
+        matcher.addURI(authority, MovieContract.PATH_MOVIE + "/*", CODE_MOVIE_WITH_ID);
         return matcher;
     }
 
@@ -50,18 +50,18 @@ public class MovieProvider extends ContentProvider {
                         null,
                         orderBy);
                 break;
-            case CODE_MOVIE_WITH_TITLE:
+            case CODE_MOVIE_WITH_ID:
                 Log.d(TAG, "Uri last path segment: " + uri.getLastPathSegment());
                 selectionArgs = new String[]{uri.getLastPathSegment()};
                 cursor = movieDbHelper.getReadableDatabase().query(
                         MovieContract.MovieData.TABLE_NAME,
                         columns,
-                        MovieContract.MovieData.COLUMN_TITLE + " = ? ",
+                        MovieContract.MovieData.COLUMN_ID + " = ? ",
                         selectionArgs,
                         null,
                         null,
                         orderBy);
-                Log.d(TAG, "Query CODE_MOVIE_WITH_TITLE cursor : " + cursor.getCount());
+                Log.d(TAG, "Query CODE_MOVIE_WITH_ID cursor : " + cursor.getCount());
         }
         cursor.setNotificationUri(getContext().getContentResolver(), uri);
         return cursor;
@@ -121,8 +121,23 @@ public class MovieProvider extends ContentProvider {
     }
 
     @Override
-    public int delete(@NonNull Uri uri, @Nullable String s, @Nullable String[] strings) {
-        return 0;
+    public int delete(@NonNull Uri uri, @Nullable String s, @Nullable String[] selectionArgs) {
+        final SQLiteDatabase db = movieDbHelper.getWritableDatabase();
+        int rowDeleted = 0;
+
+        switch (uriMatcher.match(uri)) {
+            case CODE_MOVIE_WITH_ID:
+                String id = uri.getLastPathSegment();
+                Log.d(TAG, "ID in delete: " + id);
+                selectionArgs = new String[]{id};
+                rowDeleted = db.delete(
+                                MovieContract.MovieData.TABLE_NAME,
+                                MovieContract.MovieData.COLUMN_ID + " = ? ",
+                                selectionArgs);
+                break;
+        }
+        getContext().getContentResolver().notifyChange(uri,null);
+        return rowDeleted;
     }
 
     @Override

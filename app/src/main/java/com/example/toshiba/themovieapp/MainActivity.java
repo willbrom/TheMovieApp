@@ -36,7 +36,6 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
     private static final String SORT_BY_FAVORITE = "favorite";
     private static final String BUNDLE_URL_KEY = "key_url";
     private static final int LOADER_NUM = 11;
-    private static boolean PREFERENCE_HAS_BEEN_UPDATED = false;
     private String sortBy;
 
     private RecyclerView recyclerView;
@@ -64,7 +63,6 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
         recyclerView.setAdapter(adapter);
 
         setupPreferences();
-        callMovieLoader(sortBy);
         PreferenceManager.getDefaultSharedPreferences(this)
                 .registerOnSharedPreferenceChangeListener(this);
     }
@@ -72,11 +70,18 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
     @Override
     protected void onStart() {
         super.onStart();
-        Log.d(TAG, "OnStart got called");
-        if (PREFERENCE_HAS_BEEN_UPDATED) {
-            callMovieLoader(sortBy);
-            PREFERENCE_HAS_BEEN_UPDATED = false;
+        switch (sortBy) {
+            case SORT_BY_POPULAR:
+                setTitle("Most popular");
+                break;
+            case SORT_BY_TOP_RATED:
+                setTitle("Top Rated");
+                break;
+            case SORT_BY_FAVORITE:
+                setTitle("Favorite");
         }
+        Log.d(TAG, "OnStart got called");
+        callMovieLoader(sortBy);
     }
 
     private void setupPreferences() {
@@ -149,8 +154,6 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
                 case SORT_BY_FAVORITE:
                     sortBy = SORT_BY_FAVORITE;
             }
-
-            PREFERENCE_HAS_BEEN_UPDATED = true;
         }
     }
 
@@ -198,7 +201,7 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
                             null,
                             null);
 
-                    returnedData = new String[cursor.getCount()][5];
+                    returnedData = new String[cursor.getCount()][6];
 
                     for (int i = 0; i < returnedData.length; i++) {
                         cursor.moveToNext();
@@ -207,6 +210,7 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
                         returnedData[i][2] = cursor.getString(cursor.getColumnIndex("overview"));
                         returnedData[i][3] = cursor.getString(cursor.getColumnIndex("releaseDate"));
                         returnedData[i][4] = cursor.getString(cursor.getColumnIndex("rating"));
+                        returnedData[i][5] = cursor.getString(cursor.getColumnIndex("id"));
                     }
 
                     return returnedData;

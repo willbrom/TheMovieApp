@@ -3,47 +3,67 @@ package com.example.toshiba.themovieapp;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
+import android.os.AsyncTask;
+import android.support.v4.app.ShareCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.toshiba.themovieapp.data.MovieContract;
+import com.example.toshiba.themovieapp.utilities.JsonUtils;
+import com.example.toshiba.themovieapp.utilities.NetworkUtils;
 import com.squareup.picasso.Picasso;
+
+import java.io.IOException;
+import java.net.URL;
+import java.util.ArrayList;
 
 public class DetailActivity extends AppCompatActivity {
 
     private static final String TAG = DetailActivity.class.getSimpleName();
     private static final String IMAGE_BASE_URL = "http://image.tmdb.org/t/p/w185";
+    private static final String YOUTUBE_URL = "https://www.youtube.com/watch?v=";
 
+    private ReviewAdapter reviewAdapter;
     private String title;
     private String poster;
     private String overView;
     private String releaseData;
     private String voteAverage;
+    private String id;
+    private String youtubeKey1 = "";
+    private String youtubeKey2 = "";
 
-    private TextView titleTextView;
-    private ImageView posterImageView;
-    private TextView overViewTextView;
-    private TextView releaseDataTextView;
-    private TextView voteAverageTextView;
+    private Button btn_fav;
+    private Button btn_un_fav;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_detail);
+        setContentView(R.layout.activity_detail_constraint);
 
-        titleTextView = (TextView) findViewById(R.id.tv_movie_title);
-        posterImageView = (ImageView) findViewById(R.id.iv_poster);
-        overViewTextView = (TextView) findViewById(R.id.tv_movie_overview);
-        releaseDataTextView = (TextView) findViewById(R.id.tv_movie_date);
-        voteAverageTextView = (TextView) findViewById(R.id.tv_movie_rating);
+        reviewAdapter = new ReviewAdapter();
+        final RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recycler_view_reviews);
+        final TextView titleTextView = (TextView) findViewById(R.id.movie_title);
+        final ImageView posterImageView = (ImageView) findViewById(R.id.movie_poster);
+        final TextView overViewTextView = (TextView) findViewById(R.id.movie_overview);
+        final TextView releaseDataTextView = (TextView) findViewById(R.id.movie_release_date);
+        final TextView voteAverageTextView = (TextView) findViewById(R.id.movie_rating);
+        btn_fav = (Button) findViewById(R.id.movie_fav_button);
+        btn_un_fav = (Button) findViewById(R.id.movie_un_fav_button);
 
         Intent intent = getIntent();
         String[] movieInformation = intent.getStringArrayExtra(Intent.EXTRA_TEXT);
@@ -53,67 +73,171 @@ public class DetailActivity extends AppCompatActivity {
         overView = movieInformation[2];
         releaseData = movieInformation[3];
         voteAverage = movieInformation[4];
+        id = movieInformation[5];
+        Log.d(TAG, id);
 
         Picasso.with(this).load(IMAGE_BASE_URL + poster).into(posterImageView);
 
         titleTextView.setText(title);
         overViewTextView.setText(overView);
         releaseDataTextView.setText(releaseData);
-        voteAverageTextView.setText(voteAverage);
+        voteAverageTextView.setText(voteAverage + "/10");
+
+        int count = checkDbForItem();
+        setCorrectBtn(count);
+
+        recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        recyclerView.setAdapter(reviewAdapter);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if ( youtubeKey1.equals("") && youtubeKey2.equals("") ) {
+            URL urlTrailer = NetworkUtils.getTrailerUrl(id);
+            Log.d(TAG, "Trailer Url: " + urlTrailer);
+            URL urlReview = NetworkUtils.getReviewUrl(id);
+            Log.d(TAG, "Review Url: " + urlReview);
+            new NetworkTask().execute(new URL[]{urlTrailer, urlReview});
+        }
+    }
+
+    private void watchTrailer(String trailerPath) {
+        Uri uri = Uri.parse(trailerPath);
+        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+        if (intent.resolveActivity(getPackageManager()) != null)
+            startActivity(intent);
+    }
+
+    private final void setCorrectBtn(int count) {
+        if (count > 0) {
+            btn_fav.setVisibility(View.INVISIBLE);
+            btn_un_fav.setVisibility(View.VISIBLE);
+        } else {
+            btn_un_fav.setVisibility(View.INVISIBLE);
+            btn_fav.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private final ContentValues setDetailContentValues() {
+        ContentValues cv = new ContentValues();
+        cv.put(MovieContract.MovieData.COLUMN_TITLE, title);
+        cv.put(MovieContract.MovieData.COLUMN_POSTER, poster);
+        cv.put(MovieContract.MovieData.COLUMN_OVERVIEW, overView);
+        cv.put(MovieContract.MovieData.COLUMN_RELEASE_DATE, releaseData);
+        cv.put(MovieContract.MovieData.COLUMN_RATING, voteAverage);
+        cv.put(MovieContract.MovieData.COLUMN_ID, id);
+        return cv;
+    }
+
+    public void addToFav(View view) {
+        Uri uri = getContentResolver().insert(MovieContract.MovieData.CONTENT_URI, setDetailContentValues());
+        if (uri != null) {
+            btn_fav.setVisibility(View.INVISIBLE);
+            btn_un_fav.setVisibility(View.VISIBLE);
+            Toast.makeText(this, "Added to favorite", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void removeFromFav(View view) {
+        Uri uri = MovieContract.MovieData.CONTENT_URI.buildUpon().appendPath(id).build();
+        int rowDeleted = getContentResolver().delete(uri, null, null);
+        if (rowDeleted > 0) {
+            btn_un_fav.setVisibility(View.INVISIBLE);
+            btn_fav.setVisibility(View.VISIBLE);
+            Toast.makeText(this, "Favorite removed", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    public void playTrailer1(View view) {
+        if (isOnline())
+            watchTrailer(YOUTUBE_URL + youtubeKey1);
+        else
+            Toast.makeText(this, "No network connection", Toast.LENGTH_SHORT).show();
+    }
+
+    public void playTrailer2(View view) {
+        if (isOnline())
+            watchTrailer(YOUTUBE_URL + youtubeKey2);
+        else
+            Toast.makeText(this, "No network connection", Toast.LENGTH_SHORT).show();
+    }
+
+    private int checkDbForItem() {
+        Uri uri = MovieContract.MovieData.CONTENT_URI.buildUpon().appendPath(id).build();
+        Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+        return cursor.getCount();
+    }
+
+    public boolean isOnline() {
+        ConnectivityManager cm =
+                (ConnectivityManager) getSystemService(this.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = cm.getActiveNetworkInfo();
+        return netInfo != null && netInfo.isConnectedOrConnecting();
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater menuInflater = getMenuInflater();
         menuInflater.inflate(R.menu.menu_detail, menu);
-        MenuItem addMenuItem = menu.findItem(R.id.action_add_fav);
-        MenuItem removeMenuItem = menu.findItem(R.id.action_remove_fav);
-
-        if (getCursor() > 0) {
-            addMenuItem.setVisible(false);
-            removeMenuItem.setVisible(true);
-        } else {
-            addMenuItem.setVisible(true);
-            removeMenuItem.setVisible(false);
-        }
-
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int itemId = item.getItemId();
-
-        if (itemId == R.id.action_add_fav) {
-            ContentValues cv = new ContentValues();
-            cv.put(MovieContract.MovieData.COLUMN_TITLE, title);
-            cv.put(MovieContract.MovieData.COLUMN_POSTER, poster);
-            cv.put(MovieContract.MovieData.COLUMN_OVERVIEW, overView);
-            cv.put(MovieContract.MovieData.COLUMN_RELEASE_DATE, releaseData);
-            cv.put(MovieContract.MovieData.COLUMN_RATING, voteAverage);
-
-            Uri uri = getContentResolver().insert(MovieContract.MovieData.CONTENT_URI, cv);
-            Log.d(TAG, "Here is the uri: " + uri.toString());
-
-            if (uri != null)
-                Toast.makeText(this, "Added to favorite", Toast.LENGTH_SHORT).show();
-
+        if (itemId == R.id.action_share) {
+            if (!youtubeKey1.equals("")) {
+                ShareCompat.IntentBuilder
+                        .from(this)
+                        .setType("text/plain")
+                        .setChooserTitle(title + " trailer:")
+                        .setText(YOUTUBE_URL + youtubeKey1)
+                        .startChooser();
+            } else {
+                Toast.makeText(this, "Path empty, please try again", Toast.LENGTH_SHORT).show();
+            }
             return true;
         }
-        else if (itemId == R.id.action_remove_fav) {
-            Toast.makeText(this, "Remove was clicked", Toast.LENGTH_SHORT).show();
-            return true;
-        }
-
         return super.onOptionsItemSelected(item);
     }
 
-    private int getCursor() {
-        Uri uri = MovieContract.MovieData.CONTENT_URI.buildUpon().appendPath(title).build();
-        Log.d(TAG, "Uri here: " + uri.toString());
-        Cursor cursor = getContentResolver().query(uri, null, null, null, null);
-        Log.d(TAG, "Cursor here: " + cursor.getCount());
-        return cursor.getCount();
+    private class NetworkTask extends AsyncTask<URL, Void, ArrayList<String[]>> {
+
+        @Override
+        protected ArrayList<String[]> doInBackground(URL... urls) {
+            URL urlTrailer = urls[0];
+            URL urlReview = urls[1];
+            ArrayList<String[]> arrayList = new ArrayList<>();
+            try {
+                String rawJsonTrailer = NetworkUtils.getHttpResponse(urlTrailer);
+                String rawJsonReviews = NetworkUtils.getHttpResponse(urlReview);
+                String[] trailerArray = JsonUtils.parsedJsonTrailers(rawJsonTrailer);
+                String[] reviewArray = JsonUtils.parseReviewJson(rawJsonReviews);
+                arrayList.add(trailerArray);
+                arrayList.add(reviewArray);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return arrayList;
+        }
+
+        @Override
+        protected void onPostExecute(ArrayList<String[]> arrayList) {
+            String[] stringArrayTrailer = null;
+            String[] stringArrayReview = null;
+            if (arrayList.size() == 2) {
+                stringArrayTrailer = arrayList.get(0);
+                stringArrayReview = arrayList.get(1);
+            }
+            if (stringArrayTrailer != null) {
+                youtubeKey1 = stringArrayTrailer[0];
+                youtubeKey2 = stringArrayTrailer[1];
+            }
+            if (stringArrayTrailer != null) {
+                reviewAdapter.setReviewData(stringArrayReview);
+            }
+        }
     }
 
 }

@@ -29,6 +29,36 @@ public class NetworkUtils {
         return url;
     }
 
+    public static URL getTrailerUrl(String movieId) {
+        String endPath = movieId + "/videos";
+        Uri uri = Uri.parse(BASE_URL + endPath).buildUpon()
+                .appendQueryParameter("api_key", API_KEY)
+                .build();
+        URL url = null;
+        try {
+            url = new URL(uri.toString());
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        return url;
+    }
+
+    public static URL getReviewUrl(String movieId) {
+        String endPath = movieId + "/reviews";
+        Uri uri = Uri.parse(BASE_URL + endPath).buildUpon()
+                .appendQueryParameter("api_key", API_KEY)
+                .build();
+
+        URL url = null;
+        try {
+            url = new URL(uri.toString());
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+
+        return url;
+    }
+
     public static String getHttpResponse(URL url) throws IOException {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 

@@ -59,7 +59,7 @@ public class MovieDbAdapter extends RecyclerView.Adapter<MovieDbAdapter.ItemView
         @Override
         public void onClick(View view) {
             int adapterPosition = getAdapterPosition();
-            String[] movieInformation = new String[5];
+            String[] movieInformation = new String[6];
 
             for (int i = 0; i < movieInformation.length; i++) {
                 movieInformation[i] = movieData[adapterPosition][i];

@@ -3,9 +3,10 @@
     <string name="app_name">The Movie App</string>
     <string name="error_message">Error loading data</string>
     <string name="action_settings">Settings</string>
+    <string name="action_share">Share</string>
     <string name="image_content_description">Movie poster</string>
 
-
+    <!-- 'pref_movie' strings -->
     <string name="pref_sort_by_title">Sort by</string>
     <string name="pref_sort_by_key">sort_by</string>
     <string name="pref_sort_by_default" translatable="false">popular</string>
@@ -15,5 +16,18 @@
     <string name="pref_sort_by_value_popular" translatable="false">popular</string>
     <string name="pref_sort_by_value_top_rated" translatable="false">top_rated</string>
     <string name="pref_sort_by_value_favorite" translatable="false">favorite</string>
+
+
+    <!-- 'activity_detail_constraint' strings -->
+    <string name="detail_title">Title</string>
+    <string name="detail_release_date">Release Date</string>
+    <string name="detail_rating">Rating</string>
+    <string name="detail_fav_btn">Add Favorite</string>
+    <string name="detail_remove_fav_btn">Remove Favorite</string>
+    <string name="detail_overview">Overview</string>
+    <string name="detail_trailer_title">Trailers:</string>
+    <string name="detail_trailer_1">Trailer 1</string>
+    <string name="detail_trailer_2">Trailer 2</string>
+    <string name="detail_review_title">Reviews:</string>
 
 </resources>

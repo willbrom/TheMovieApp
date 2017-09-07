@@ -22,6 +22,7 @@ public class MovieContract {
         public static final String COLUMN_OVERVIEW = "overview";
         public static final String COLUMN_RELEASE_DATE = "releaseDate";
         public static final String COLUMN_RATING = "rating";
+        public static final String COLUMN_ID = "id";
     }
 
 }

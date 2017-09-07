@@ -3,17 +3,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/action_add_fav"
+        android:id="@+id/action_share"
+        android:title="@string/action_share"
+        android:icon="@android:drawable/ic_menu_share"
         app:showAsAction="always"
-        android:title="Add Fav"
-        android:orderInCategory="1"
-        android:visible="false"/>
-
-    <item
-        android:id="@+id/action_remove_fav"
-        app:showAsAction="always"
-        android:title="Remove Fav"
-        android:orderInCategory="2"
-        android:visible="false"/>
+        android:orderInCategory="1" />
 
 </menu>
