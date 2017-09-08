@@ -29,7 +29,7 @@ import java.net.URL;
 
 public class MainActivity extends AppCompatActivity implements MovieDbAdapter.ItemClickListener,
         SharedPreferences.OnSharedPreferenceChangeListener,
-        LoaderManager.LoaderCallbacks<String[][]>{
+        LoaderManager.LoaderCallbacks<String[][]> {
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String SORT_BY_POPULAR = "popular";
@@ -66,7 +66,8 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
         recyclerView.setAdapter(adapter);
 
         if (savedInstanceState != null) {
-            recyclerView.getLayoutManager().onRestoreInstanceState(savedInstanceState.getParcelable(KEY));
+            recyclerView.getLayoutManager()
+                    .onRestoreInstanceState(savedInstanceState.getParcelable(KEY));
         }
 
         setupPreferences();
@@ -153,11 +154,6 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
     private void showErrorMessage() {
         recyclerView.setVisibility(View.INVISIBLE);
         textViewErrorMessage.setVisibility(View.VISIBLE);
-    }
-
-    @Override
-    public Parcelable onSaveInstanceState() {
-        return null;
     }
 
     @Override
@@ -300,8 +296,4 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
                 .unregisterOnSharedPreferenceChangeListener(this);
     }
 
-    @Override
-    public void onPointerCaptureChanged(boolean hasCapture) {
-
-    }
 }

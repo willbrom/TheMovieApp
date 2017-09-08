@@ -6,8 +6,11 @@ import android.database.Cursor;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
-import android.os.AsyncTask;
+import android.os.Parcelable;
+import android.support.v4.app.LoaderManager;
 import android.support.v4.app.ShareCompat;
+import android.support.v4.content.AsyncTaskLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
@@ -17,6 +20,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -31,13 +35,19 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 
-public class DetailActivity extends AppCompatActivity {
+public class DetailActivity extends AppCompatActivity
+        implements LoaderManager.LoaderCallbacks<ArrayList<String[]>> {
 
     private static final String TAG = DetailActivity.class.getSimpleName();
     private static final String IMAGE_BASE_URL = "http://image.tmdb.org/t/p/w185";
     private static final String YOUTUBE_URL = "https://www.youtube.com/watch?v=";
+    private static final int LOADER_NUM = 11;
+    private static final String KEY = "1";
+    private static final String BUNDLE_URL_KEY = "key_url";
+
 
     private ReviewAdapter reviewAdapter;
+    private RecyclerView recyclerView;
     private String title;
     private String poster;
     private String overView;
@@ -46,6 +56,7 @@ public class DetailActivity extends AppCompatActivity {
     private String id;
     private String youtubeKey1 = "";
     private String youtubeKey2 = "";
+    private Parcelable parcelable;
 
     private Button btn_fav;
     private Button btn_un_fav;
@@ -56,7 +67,7 @@ public class DetailActivity extends AppCompatActivity {
         setContentView(R.layout.activity_detail_constraint);
 
         reviewAdapter = new ReviewAdapter();
-        final RecyclerView recyclerView = (RecyclerView) findViewById(R.id.recycler_view_reviews);
+        recyclerView = (RecyclerView) findViewById(R.id.recycler_view_reviews);
         final TextView titleTextView = (TextView) findViewById(R.id.movie_title);
         final ImageView posterImageView = (ImageView) findViewById(R.id.movie_poster);
         final TextView overViewTextView = (TextView) findViewById(R.id.movie_overview);
@@ -88,17 +99,40 @@ public class DetailActivity extends AppCompatActivity {
 
         recyclerView.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         recyclerView.setAdapter(reviewAdapter);
+
+        if (savedInstanceState != null) {
+            recyclerView.getLayoutManager()
+                    .onRestoreInstanceState(savedInstanceState.getParcelable(KEY));
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putParcelable(KEY, recyclerView.getLayoutManager().onSaveInstanceState());
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        if (savedInstanceState != null)
+            parcelable = savedInstanceState.getParcelable(KEY);
     }
 
     @Override
     protected void onStart() {
         super.onStart();
         if ( youtubeKey1.equals("") && youtubeKey2.equals("") ) {
-            URL urlTrailer = NetworkUtils.getTrailerUrl(id);
-            Log.d(TAG, "Trailer Url: " + urlTrailer);
-            URL urlReview = NetworkUtils.getReviewUrl(id);
-            Log.d(TAG, "Review Url: " + urlReview);
-            new NetworkTask().execute(new URL[]{urlTrailer, urlReview});
+            Bundle bundle = new Bundle();
+            bundle.putString(BUNDLE_URL_KEY, id);
+
+            LoaderManager loaderManager = getSupportLoaderManager();
+            Loader<String[][]> loader = loaderManager.getLoader(LOADER_NUM);
+
+            if (loader == null)
+                loaderManager.initLoader(LOADER_NUM, bundle, this);
+            else
+                loaderManager.restartLoader(LOADER_NUM, bundle, this);
         }
     }
 
@@ -202,42 +236,70 @@ public class DetailActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    private class NetworkTask extends AsyncTask<URL, Void, ArrayList<String[]>> {
+    @Override
+    public Loader<ArrayList<String[]>> onCreateLoader(final int id, final Bundle args) {
+        return new AsyncTaskLoader<ArrayList<String[]>>(this) {
 
-        @Override
-        protected ArrayList<String[]> doInBackground(URL... urls) {
-            URL urlTrailer = urls[0];
-            URL urlReview = urls[1];
-            ArrayList<String[]> arrayList = new ArrayList<>();
-            try {
-                String rawJsonTrailer = NetworkUtils.getHttpResponse(urlTrailer);
-                String rawJsonReviews = NetworkUtils.getHttpResponse(urlReview);
-                String[] trailerArray = JsonUtils.parsedJsonTrailers(rawJsonTrailer);
-                String[] reviewArray = JsonUtils.parseReviewJson(rawJsonReviews);
-                arrayList.add(trailerArray);
-                arrayList.add(reviewArray);
-            } catch (IOException e) {
-                e.printStackTrace();
+            ArrayList<String[]> results;
+
+            @Override
+            protected void onStartLoading() {
+                if (args == null)
+                    return;
+                if (results != null) {
+                    deliverResult(results);
+                } else
+                    forceLoad();
             }
-            return arrayList;
+
+            @Override
+            public ArrayList<String[]> loadInBackground() {
+                String id = args.getString(BUNDLE_URL_KEY);
+                URL urlTrailer = NetworkUtils.getTrailerUrl(id);
+                URL urlReview = NetworkUtils.getReviewUrl(id);
+                ArrayList<String[]> arrayList = new ArrayList<>();
+                try {
+                    String rawJsonTrailer = NetworkUtils.getHttpResponse(urlTrailer);
+                    String rawJsonReviews = NetworkUtils.getHttpResponse(urlReview);
+                    String[] trailerArray = JsonUtils.parsedJsonTrailers(rawJsonTrailer);
+                    String[] reviewArray = JsonUtils.parseReviewJson(rawJsonReviews);
+                    arrayList.add(trailerArray);
+                    arrayList.add(reviewArray);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                return arrayList;
+            }
+
+            @Override
+            public void deliverResult(ArrayList<String[]> data) {
+                results = data;
+                super.deliverResult(data);
+            }
+        };
+    }
+
+    @Override
+    public void onLoadFinished(Loader<ArrayList<String[]>> loader, ArrayList<String[]> data) {
+        String[] stringArrayTrailer = null;
+        String[] stringArrayReview = null;
+        if (data.size() == 2) {
+            stringArrayTrailer = data.get(0);
+            stringArrayReview = data.get(1);
         }
-
-        @Override
-        protected void onPostExecute(ArrayList<String[]> arrayList) {
-            String[] stringArrayTrailer = null;
-            String[] stringArrayReview = null;
-            if (arrayList.size() == 2) {
-                stringArrayTrailer = arrayList.get(0);
-                stringArrayReview = arrayList.get(1);
-            }
-            if (stringArrayTrailer != null) {
-                youtubeKey1 = stringArrayTrailer[0];
-                youtubeKey2 = stringArrayTrailer[1];
-            }
-            if (stringArrayTrailer != null) {
-                reviewAdapter.setReviewData(stringArrayReview);
-            }
+        if (stringArrayTrailer != null) {
+            youtubeKey1 = stringArrayTrailer[0];
+            youtubeKey2 = stringArrayTrailer[1];
+        }
+        if (stringArrayTrailer != null) {
+            reviewAdapter.setReviewData(stringArrayReview);
+            if (parcelable != null)
+                recyclerView.getLayoutManager().onRestoreInstanceState(parcelable);
         }
     }
 
+    @Override
+    public void onLoaderReset(Loader<ArrayList<String[]>> loader) {
+
+    }
 }

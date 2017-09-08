@@ -18,8 +18,6 @@ public class MovieDbAdapter extends RecyclerView.Adapter<MovieDbAdapter.ItemView
     private final ItemClickListener clickListener;
 
     interface ItemClickListener {
-        Parcelable onSaveInstanceState();
-
         void onClick(String[] movieInformation);
     }
 
