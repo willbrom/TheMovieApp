@@ -2,6 +2,7 @@ package com.example.toshiba.themovieapp;
 
 
 import android.content.Context;
+import android.os.Parcelable;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,6 +18,8 @@ public class MovieDbAdapter extends RecyclerView.Adapter<MovieDbAdapter.ItemView
     private final ItemClickListener clickListener;
 
     interface ItemClickListener {
+        Parcelable onSaveInstanceState();
+
         void onClick(String[] movieInformation);
     }
 

@@ -3,6 +3,7 @@ package com.example.toshiba.themovieapp;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.os.Parcelable;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.AsyncTaskLoader;
 import android.support.v4.content.Loader;
@@ -20,7 +21,6 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.example.toshiba.themovieapp.data.MovieContract;
-import com.example.toshiba.themovieapp.data.MovieDbHelper;
 import com.example.toshiba.themovieapp.utilities.JsonUtils;
 import com.example.toshiba.themovieapp.utilities.NetworkUtils;
 
@@ -28,7 +28,8 @@ import java.net.URL;
 
 
 public class MainActivity extends AppCompatActivity implements MovieDbAdapter.ItemClickListener,
-        SharedPreferences.OnSharedPreferenceChangeListener, LoaderManager.LoaderCallbacks<String[][]>{
+        SharedPreferences.OnSharedPreferenceChangeListener,
+        LoaderManager.LoaderCallbacks<String[][]>{
 
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final String SORT_BY_POPULAR = "popular";
@@ -36,13 +37,15 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
     private static final String SORT_BY_FAVORITE = "favorite";
     private static final String BUNDLE_URL_KEY = "key_url";
     private static final int LOADER_NUM = 11;
+    private static final String KEY = "1";
     private String sortBy;
 
     private RecyclerView recyclerView;
     private TextView textViewErrorMessage;
     private ProgressBar progressBar;
     private MovieDbAdapter adapter;
-
+    private Parcelable parcelable;
+    private GridLayoutManager layoutManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,14 +60,31 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
         adapter = new MovieDbAdapter(this);
 
         int spanCount = 2;
-        GridLayoutManager layoutManager = new GridLayoutManager(this, spanCount, GridLayoutManager.VERTICAL, false);
+        layoutManager = new GridLayoutManager(this, spanCount, GridLayoutManager.VERTICAL, false);
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setHasFixedSize(true);
         recyclerView.setAdapter(adapter);
 
+        if (savedInstanceState != null) {
+            recyclerView.getLayoutManager().onRestoreInstanceState(savedInstanceState.getParcelable(KEY));
+        }
+
         setupPreferences();
         PreferenceManager.getDefaultSharedPreferences(this)
                 .registerOnSharedPreferenceChangeListener(this);
+
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putParcelable(KEY, recyclerView.getLayoutManager().onSaveInstanceState());
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        parcelable = savedInstanceState.getParcelable(KEY);
+        super.onRestoreInstanceState(savedInstanceState);
     }
 
     @Override
@@ -115,10 +135,14 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
         LoaderManager loaderManager = getSupportLoaderManager();
         Loader<String[][]> loader = loaderManager.getLoader(LOADER_NUM);
 
-        if (loader == null)
+        if (loader == null) {
+            Log.d(TAG, "Loader is null");
             loaderManager.initLoader(LOADER_NUM, bundle, this);
-        else
+        }
+        else {
+            Log.d(TAG, "Loader is not null");
             loaderManager.restartLoader(LOADER_NUM, bundle, this);
+        }
     }
 
     private void showRecyclerView() {
@@ -129,6 +153,11 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
     private void showErrorMessage() {
         recyclerView.setVisibility(View.INVISIBLE);
         textViewErrorMessage.setVisibility(View.VISIBLE);
+    }
+
+    @Override
+    public Parcelable onSaveInstanceState() {
+        return null;
     }
 
     @Override
@@ -236,6 +265,8 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
         } else {
             showRecyclerView();
             adapter.setMovieData(data);
+            if (parcelable != null)
+                recyclerView.getLayoutManager().onRestoreInstanceState(parcelable);
         }
     }
 
@@ -269,4 +300,8 @@ public class MainActivity extends AppCompatActivity implements MovieDbAdapter.It
                 .unregisterOnSharedPreferenceChangeListener(this);
     }
 
+    @Override
+    public void onPointerCaptureChanged(boolean hasCapture) {
+
+    }
 }
